@@ -17,7 +17,8 @@ namespace LiteDB
 
         private IDiskService _disk;
 
-        private CacheService _cache;
+        private Func<IDiskService, Logger, ICacheService> _cacheServiceFactory;
+        private ICacheService _cache;
 
         private PageService _pager;
 
@@ -94,20 +95,30 @@ namespace LiteDB
         /// <summary>
         /// Initialize LiteEngine using custom disk service implementation and full engine options
         /// </summary>
-        public LiteEngine(IDiskService disk, string password = null, TimeSpan? timeout = null, int cacheSize = 5000, Logger log = null, bool utcDate = false)
+        public LiteEngine(IDiskService disk, string password = null, TimeSpan? timeout = null, int cacheSize = 5000, Logger log = null, bool utcDate = false) : this(new LiteEngineOptions
         {
-            if (disk == null) throw new ArgumentNullException(nameof(disk));
+            DiskService = disk,
+            Password = password,
+            Timeout = timeout,
+            CacheSize = cacheSize,
+            UtcDate = utcDate
+        }, log) { }
 
-            _timeout = timeout ?? TimeSpan.FromMinutes(1);
-            _cacheSize = cacheSize;
-            _disk = disk;
+        public LiteEngine(LiteEngineOptions options, Logger log)
+        {
+            if (options.DiskService == null) throw new ArgumentNullException(nameof(options.DiskService));
+
+            _timeout = options.Timeout ?? TimeSpan.FromMinutes(1);
+            _cacheSize = options.CacheSize;
+            _disk = options.DiskService;
             _log = log ?? new Logger();
-            _bsonReader = new BsonReader(utcDate);
+            _bsonReader = new BsonReader(options.UtcDate);
+            _cacheServiceFactory = options.CacheServiceFactory;
 
             try
             {
                 // initialize datafile (create) and set log instance
-                _disk.Initialize(_log, password);
+                _disk.Initialize(_log, options.Password);
 
                 // lock disk (read mode) before read header
                 var position = _disk.Lock(LockState.Read, _timeout);
@@ -120,7 +131,7 @@ namespace LiteDB
                 var header = BasePage.ReadPage(buffer) as HeaderPage;
 
                 // hash password with sha1 or keep as empty byte[20]
-                var sha1 = password == null ? new byte[20] : AesEncryption.HashSHA1(password);
+                var sha1 = options.Password == null ? new byte[20] : AesEncryption.HashSHA1(options.Password);
 
                 // compare header password with user password even if not passed password (datafile can have password)
                 if (sha1.BinaryCompareTo(header.Password) != 0)
@@ -129,9 +140,9 @@ namespace LiteDB
                 }
 
                 // initialize AES encryptor
-                if (password != null)
+                if (options.Password != null)
                 {
-                    _crypto = new AesEncryption(password, header.Salt);
+                    _crypto = new AesEncryption(options.Password, header.Salt);
                 }
 
                 // initialize all services
@@ -156,7 +167,7 @@ namespace LiteDB
         /// </summary>
         private void InitializeServices()
         {
-            _cache = new CacheService(_disk, _log);
+            _cache = _cacheServiceFactory?.Invoke(_disk, _log) ?? new CacheService(_disk, _log);
             _locker = new LockService(_disk, _cache, _timeout, _log);
             _pager = new PageService(_disk, _crypto, _cache, _log);
             _indexer = new IndexService(_pager, _log);

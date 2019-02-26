@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace LiteDB
 {
-    internal class CacheService
+    internal class CacheService : ICacheService
     {
         /// <summary>
         /// Collection to store clean only pages in cache

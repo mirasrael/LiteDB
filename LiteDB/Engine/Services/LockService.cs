@@ -16,11 +16,11 @@ namespace LiteDB
 
         private TimeSpan _timeout;
         private IDiskService _disk;
-        private CacheService _cache;
+        private ICacheService _cache;
         private Logger _log;
         private ReaderWriterLockSlim _thread = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
 
-        internal LockService(IDiskService disk, CacheService cache, TimeSpan timeout, Logger log)
+        internal LockService(IDiskService disk, ICacheService cache, TimeSpan timeout, Logger log)
         {
             _disk = disk;
             _cache = cache;

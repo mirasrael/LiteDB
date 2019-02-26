@@ -111,6 +111,16 @@ namespace LiteDB
             _engine = new LazyLoad<LiteEngine>(() => new LiteEngine(diskService, password: password, timeout: timeout, cacheSize: cacheSize, log: _log ));
         }
 
+        public LiteDatabase(LiteEngineOptions options, BsonMapper mapper = null, Logger log = null)
+        {
+            if (options.DiskService == null) throw new ArgumentNullException(nameof(options.DiskService));
+
+            _mapper = mapper ?? BsonMapper.Global;
+            _log = log ?? new Logger();
+
+            _engine = new LazyLoad<LiteEngine>(() => new LiteEngine(options, _log));
+        }
+
         #endregion
 
         #region Collections
