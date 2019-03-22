@@ -8,7 +8,7 @@ namespace LiteDB
     /// <summary>
     /// Encryption AES wrapper to encrypt data pages
     /// </summary>
-    internal class AesEncryption
+    public class AesEncryption
     {
         private Aes _aes;
 

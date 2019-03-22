@@ -8,6 +8,7 @@ namespace LiteDB
         int DirtyUsed { get; }
         void DiscardDirtyPages();
         BasePage GetPage(uint pageID);
+        BasePage GetOrAddPage(uint pageID, AesEncryption crypto);
         void AddPage(BasePage page);
         void ClearPages();
         void SetDirty(BasePage page);

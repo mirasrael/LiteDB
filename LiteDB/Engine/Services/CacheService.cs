@@ -39,6 +39,32 @@ namespace LiteDB
             return page;
         }
 
+        public BasePage GetOrAddPage(uint pageID, AesEncryption crypto)
+        {
+            lock(_disk)
+            {
+                var page = this.GetPage(pageID);
+
+                // is not on cache? load from disk
+                if (page == null)
+                {
+                    var buffer = _disk.ReadPage(pageID);
+
+                    // if datafile are encrypted, decrypt buffer (header are not encrypted)
+                    if (crypto != null && pageID > 0)
+                    {
+                        buffer = crypto.Decrypt(buffer);
+                    }
+
+                    page = BasePage.ReadPage(buffer);
+
+                    this.AddPage(page);
+                }
+
+                return page;
+            }
+        }
+
         /// <summary>
         /// Add page to cache
         /// [ThreadSafe]
